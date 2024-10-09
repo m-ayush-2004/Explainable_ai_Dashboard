@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deep Learning Models</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+</head>
+<body>
+    <div class="container mt-5 pt-5">
+        <h1>Deep Learning Models</h1>
+        <form action="{{ url_for('deep_learning') }}" method="post" enctype="multipart/form-data">
+            <label for="image_file">Upload Image:</label>
+            <input type="file" name="image_file" accept="image/*" required><br><br>
+            <button type="submit" class="btn btn-primary">Predict</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Basic Models</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+</head>
+<body>
+    <div class="container mt-5 pt-5">
+        <h1>Basic Models</h1>
+        <form action="{{ url_for('basic_models_route') }}" method="post">
+            <label for="selected_model">Choose Basic Model:</label>
+            <select name="selected_model" id="selected_model" class="form-control" required onchange="showInputs()">
+                <option value="">Select Model</option>
+                {% for model in models.keys() %}
+                    <option value="{{ model }}">{{ model.capitalize() }}</option>
+                {% endfor %}
+            </select>
+
+            <div id="input-fields"></div>
+
+            <button type="submit" class="btn btn-primary mt-3">Predict</button>
+        </form>
+
+        <!-- JavaScript to dynamically show input fields based on selected model -->
+        <script>
+            const models = {{ models | tojson }};
+            
+            function showInputs() {
+                const selectedModel = document.getElementById('selected_model').value;
+                const inputFieldsDiv = document.getElementById('input-fields');
+                inputFieldsDiv.innerHTML = ''; // Clear previous inputs
+
+                if (selectedModel) {
+                    const params = models[selectedModel];
+                    params.forEach(param => {
+                        const label = document.createElement('label');
+                        label.innerText = param.charAt(0).toUpperCase() + param.slice(1) + ':';
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.name = param;
+                        input.className = 'form-control mb-2';
+                        input.placeholder = `Enter ${param}`;
+                        inputFieldsDiv.appendChild(label);
+                        inputFieldsDiv.appendChild(input);
+                    });
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>
