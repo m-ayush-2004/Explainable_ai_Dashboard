@@ -47,9 +47,22 @@ def search():
 
 # Define available models and their parameters
 basic_models = {
-    'diabetes': ['age', 'bmi', 'blood_pressure'],
-    'cancer': ['tumor_size', 'age', 'family_history'],
-    'heart_attack': ['cholesterol', 'age', 'blood_pressure']
+    'diabetes': ['gender', 'age', 'hypertension', 'heart_disease', 'smoking_history',
+       'bmi', 'HbA1c_level', 'blood_glucose_level', 'diabetes'],
+    'heart_attack': ['age', 'sex', 'cp', 'trtbps', 'chol', 'fbs', 'restecg', 'thalachh',
+       'exng', 'oldpeak', 'slp', 'caa', 'thall', 'output'],
+    'stroke_analysis': ['id', 'gender', 'age', 'hypertension', 'heart_disease', 'ever_married',
+       'work_type', 'Residence_type', 'avg_glucose_level', 'bmi',
+       'smoking_status', 'stroke'],
+    'tissue_tumor':['id', 'diagnosis', 'radius_mean', 'texture_mean', 'perimeter_mean',
+       'area_mean', 'smoothness_mean', 'compactness_mean', 'concavity_mean',
+       'concave points_mean', 'symmetry_mean', 'fractal_dimension_mean',
+       'radius_se', 'texture_se', 'perimeter_se', 'area_se', 'smoothness_se',
+       'compactness_se', 'concavity_se', 'concave points_se', 'symmetry_se',
+       'fractal_dimension_se', 'radius_worst', 'texture_worst',
+       'perimeter_worst', 'area_worst', 'smoothness_worst',
+       'compactness_worst', 'concavity_worst', 'concave points_worst',
+       'symmetry_worst', 'fractal_dimension_worst', 'Unnamed: 32']
 }
 
 # Define deep learning models (for demonstration purposes)
