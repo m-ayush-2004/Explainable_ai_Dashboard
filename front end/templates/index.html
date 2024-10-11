@@ -17,7 +17,7 @@
             height: 40px;
         }
         .hero {
-            background-image: url('https://www.example.com/hero-image.jpg'); /* Replace with your image URL */
+            background-image: url('https://cdn.aarp.net/content/dam/aarp/home-and-family/caregiving/2017/09/1140-doctor-patient-caregiver-handling-hospitalization.jpg'); /* Replace with your image URL */
             background-size: cover;
             background-position: center;
             color: rgb(49, 49, 49);
@@ -58,6 +58,34 @@
         .search-bar {
             padding: 20px 0;
         }
+        .hero {
+    position: relative;
+    background-image: url('https://cdn.aarp.net/content/dam/aarp/home-and-family/caregiving/2017/09/1140-doctor-patient-caregiver-handling-hospitalization.jpg');
+    background-size: cover;
+    background-position: center;
+    padding: 150px 0;
+    text-align: center;
+}
+        .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5); /* Dark overlay covering the entire image */
+    z-index: 1;
+}
+
+.hero .container {
+    position: relative;
+    z-index: 2; /* Ensures the text is above the overlay */
+    color: white;
+}
+
+.hero h1, .hero p, .hero a {
+    color: white;
+}
     </style>
 </head>
 <body>
@@ -154,7 +182,7 @@
           <div class="col-md-4">
             <div class="card mb-4">
               <img
-                src="../assets/news.jpg"
+                src="https://plus.unsplash.com/premium_photo-1707080369554-359143c6aa0b?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fG5ld3N8ZW58MHx8MHx8fDA%3D"
                 class="card-img-top"
                 alt="Latest News"
               />
@@ -171,7 +199,7 @@
           <div class="col-md-4">
             <div class="card mb-4">
               <img
-                src="https://www.example.com/nearby-hospitals.jpg"
+                src="https://img.freepik.com/free-vector/people-walking-sitting-hospital-building-city-clinic-glass-exterior-flat-vector-illustration-medical-help-emergency-architecture-healthcare-concept_74855-10130.jpg"
                 class="card-img-top"
                 alt="Nearby Hospitals"
               />
