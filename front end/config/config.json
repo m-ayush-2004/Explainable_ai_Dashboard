@@ -1,0 +1,31 @@
+{
+    "diabetes": {
+        "target_column": "diabetes",
+        "features": [
+            "gender",
+            "age",
+            "hypertension",
+            "heart_disease",
+            "smoking_history",
+            "bmi",
+            "HbA1c_level",
+            "blood_glucose_level"
+        ]
+    },
+    "stroke": {
+        "target_column": "stroke",
+        "features": [
+            "id",
+            "gender",
+            "age",
+            "hypertension",
+            "heart_disease",
+            "ever_married",
+            "work_type",
+            "Residence_type",
+            "avg_glucose_level",
+            "bmi",
+            "smoking_status"
+        ]
+    }
+}

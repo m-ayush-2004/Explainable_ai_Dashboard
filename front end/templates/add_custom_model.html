@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Deep Learning Models</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Custom Model</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="../static/style_sheets.css">
 
@@ -39,13 +41,24 @@
             </ul>
         </div>
     </nav>
-    <div class="container mt-5 pt-5">
-        <h1>Deep Learning Models</h1>
-        <form action="{{ url_for('deep_learning') }}" method="post" enctype="multipart/form-data">
-            <label for="image_file">Upload Image:</label>
-            <input type="file" name="image_file" accept="image/*" required><br><br>
-            <button type="submit" class="btn btn-primary">Predict</button>
+    <div class="container">
+        <h1 class="mt-4">Add Custom Model</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="model_name">Model Name</label>
+                <input type="text" class="form-control" id="model_name" name="model_name" required>
+            </div>
+            <div class="form-group">
+                <label for="target_column">Target Column</label>
+                <input type="text" class="form-control" id="target_column" name="target_column" required>
+            </div>
+            <div class="form-group">
+                <label for="file">Dataset (CSV)</label>
+                <input type="file" class="form-control-file" id="file" name="file" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload and Train Model</button>
         </form>
     </div>
 </body>
+
 </html>

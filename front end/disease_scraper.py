@@ -29,7 +29,7 @@ def scrape_disease_info(disease_name):
         driver_path = r"C:\Users\ayush\Desktop\chromedriver.exe"
         service = Service(driver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.minimize_window()
+
         # Step 1: Open Mayo Clinic search page
         driver.get("https://www.mayoclinic.org/")
 
