@@ -9,7 +9,8 @@
             "smoking_history",
             "bmi",
             "HbA1c_level",
-            "blood_glucose_level"
+            "blood_glucose_level",
+            "diabetes"
         ]
     },
     "stroke": {
@@ -25,7 +26,8 @@
             "Residence_type",
             "avg_glucose_level",
             "bmi",
-            "smoking_status"
+            "smoking_status",
+            "stroke"
         ]
     }
 }

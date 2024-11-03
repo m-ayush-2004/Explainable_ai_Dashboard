@@ -35,13 +35,10 @@ def run_deep_learning_model(file):
     # Implement your deep learning model logic here
     return "Deep Learning Prediction Result"
 
-# def run_model(model_name, inputs):
-#     if model_name == 'diabetes':
-#         return "Diabetes Prediction Result"
-#     elif model_name == 'cancer':
-#         return "Cancer Prediction Result"
-#     elif model_name == 'heart_attack':
-#         return "Heart Attack Prediction Result"
+
+
+
+
 
 
 @app.route('/')
@@ -53,9 +50,6 @@ def news():
     # Assuming you fetch data from an API
     news_articles = [{"title": "Health News 1", "description": "Details about news 1", "url": "#"}]
     return render_template('news.html', news_articles=news_articles)
-
-# Replace with your actual Google Maps API key
-GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY'
 
 @app.route('/hospitals', methods=['GET', 'POST'])
 def hospitals():
@@ -71,8 +65,6 @@ def hospitals():
     
     return render_template('location/hospitals.html', hospitals=hospitals_data)
 
-
-
 @app.route('/search')
 def search():
     query = request.args.get('query')
@@ -80,6 +72,9 @@ def search():
     disease_info = scrape_disease_info(query)
     return render_template('search_results.html', query=query, info=disease_info)
 
+@app.route('/models')
+def models():
+    return render_template('index/predict.html')
 
 
 
@@ -117,14 +112,46 @@ def deep_learning():
 
 
 # Define available models and their parameters
+
+def preprocess_data(data,target_column):
+    data.dropna()
+    # Encode categorical features
+    for col in data.select_dtypes(include=['object']).columns:
+        data[col] = data[col].astype('category').cat.codes
+    # Split dataset into features (X) and target (y)
+    y = data[target_column]
+
+
+    # Get unique classes and their counts
+    class_counts = y.value_counts()
+
+    # Identify minimum and maximum class counts
+    min_class_count = class_counts.min()
+    max_class_count = class_counts.max()
+
+    # Balance classes by reducing larger classes if necessary
+    balanced_data = []
+
+    for cls in class_counts.index:
+        cls_data = data[data[target_column] == cls]
+
+        if len(cls_data) > min_class_count * 2:
+            # Downsample larger classes to double the size of the minimum class
+            cls_data = resample(cls_data, replace=False, n_samples=min_class_count * 2, random_state=42)
+
+        balanced_data.append(cls_data)
+        print(len(balanced_data))
+
+    # Combine balanced classes into a single DataFrame
+    balanced_data = pd.concat(balanced_data)
+    return balanced_data
+
 def load_model_config():
     config_path = os.path.join('front end', 'config', 'config.json')
     with open(config_path, 'r') as file:
         models_config = json.load(file)
     print("Loaded models config:", models_config)  # Add this line for debugging
     return models_config
-
-
 
 @app.route('/basic_models', methods=['GET', 'POST'])
 def basic_models_route():
@@ -140,7 +167,7 @@ def basic_models_route():
         else:
             flash("Selected model not found in configuration.", "danger")
 
-    return render_template('basic_models.html', models=basic_models)
+    return render_template('basic_model/basic_models.html', models=basic_models)
 
 
 @app.route('/add_custom_model', methods=['GET', 'POST'])
@@ -153,20 +180,17 @@ def add_custom_model():
         if model_name and target_column and file:
             file_path = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(file_path)
-
-            try:
-                data = pd.read_csv(file_path)
-                model_path = train_and_save_model(data, target_column, model_name)
-                flash(f"Model '{model_name}' created and saved at {model_path}", 'success')
-                return redirect(url_for('model_visualizations', model_name=model_name, file_path= file_path))
-            except Exception as e:
-                flash(f"Error: {str(e)}", 'danger')
-            return redirect(url_for('add_custom_model'))
+            data = pd.read_csv(file_path)
+            balanced_data= preprocess_data(data, target_column)
+            model_path = train_and_save_model(balanced_data, target_column, model_name)
+            flash(f"Model '{model_name}' created and saved at {model_path}", 'success')
+            return redirect(url_for('model_visualizations', model_name=model_name, file_path= file_path))
+            
         else:
             flash("Please provide all required fields.", 'warning')
-        return render_template('add_custom_model.html')
-    else:
-        return render_template('add_custom_model.html')
+            return render_template('basic_model/add_custom_model.html')
+    elif request.method == 'GET':
+        return render_template('basic_model/add_custom_model.html')
 
 @app.route('/model_visualizations/<model_name>/<file_path>')
 def model_visualizations(model_name, file_path):
@@ -179,6 +203,8 @@ def model_visualizations(model_name, file_path):
     # file_path = os.path.join(file_path)
     data = pd.read_csv(file_path)
     target_column = config_data[model_name]['target_column']
+    data = preprocess_data(data, target_column)
+    print(len(data))
     fig_cm = create_visualizations(model_name, data, target_column)
     shap_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_name}_shap_summary.png")
     corr_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_name}_correlation_matrix.png")
@@ -186,7 +212,7 @@ def model_visualizations(model_name, file_path):
     # Convert figures to JSON for Plotly to render in HTML
     fig_cm_json = fig_cm.to_json()
 
-    return render_template('model_visualizations.html', fig_cm=fig_cm_json,  shap_plot_path=shap_plot_path, corr = corr_plot_path, pair_plot_path=pair_plot_path)
+    return render_template('basic_model/model_visualizations.html', fig_cm=fig_cm_json,  shap_plot_path=shap_plot_path, corr = corr_plot_path, pair_plot_path=pair_plot_path)
 
 
 
@@ -224,8 +250,6 @@ def load_model(models_dir, model_name):
 
 @app.route('/predict', methods=['GET'])
 def predict():
-    # Load models at startup
-
     # Get model choice from form
     model_choice = request.args.get('model')  # Changed to use query parameters
     
@@ -233,17 +257,11 @@ def predict():
     if model_choice in load_model_config().keys():
         # Collect inputs from query parameters
         inputs = {key: request.args.get(key) for key in request.args if key != 'model'}
-        # Convert inputs to appropriate types if necessary
-        # Convert inputs to a 2D array format
-        # input_values = [float(inputs[key]) for key in sorted(inputs.keys())]  # Ensure consistent order
-        # input_array = np.array([input_values])  # Reshape to 2D array
-        # Run prediction using the selected model
+
         prediction_result, force_plot_path = run_model(model_choice, inputs)
         load_model('Back end/chk_pts', model_choice)  # Ensure the model is loaded
-        # predictions = models[model_choice].predict(input_array)  # Pass inputs as a list of dicts
-        # Convert predictions to a list or DataFrame for display
-        # prediction_result = predictions.tolist()
-        return render_template('predict_results.html', 
+
+        return render_template('basic_model/predict_results.html', 
                     result=prediction_result, 
                     model_name=model_choice, 
                     force_plot=force_plot_path)

@@ -29,31 +29,46 @@
         .visualization-section {
             margin-top: 40px;
         }
+        .navbar-brand img {
+    height: 40px !important;
+}
     </style>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../static/style_sheets.css">
 </head>
-
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
-        <a class="navbar-brand" href="/">Medical Dashboard</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="/">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/basic_models">Basic Models</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/add_custom_model">Add Custom Model</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
 
+
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <a class="navbar-brand" href="/">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTaVhC3--vhdTnItuWGWX3tX8TQ2o8hrZNCbw&s"
+        alt="Logo"> <!-- Replace with your logo URL -->
+      Medical Dashboard
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item active">
+          <a class="nav-link" href="/">Home </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/news">News</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/hospitals">Hospitals</a>
+        </li>
+        <!-- <li class="nav-item">
+          <a class="nav-link" href="/search">Disease Search</a>
+        </li> -->
+        <li class="nav-item">
+          <a class="nav-link" href="/models">AI Prediction</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
     <div class="container mt-5">
         <h1 class="heading">Visualizations for {{ model_name | capitalize }}</h1>
 
@@ -84,6 +99,10 @@
             <p>A correlation plot is a graphical representation that illustrates the relationship between two or more variables. It visually conveys how changes in one variable are associated with changes in another, allowing for the identification of patterns, trends, and potential correlations.</p>
             <img src="{{ url_for('static', filename='shap_plots/' + corr.split('/')[-1]) }}" alt="Correlation Plot" style="width: 100%; height: auto;">
         </div>
+
+        <form action="/basic_models" method="get">
+          <button type="submit" class="btn btn-primary">Get Started with Predictions</button>
+        </form>
     </div>
 
     <script>

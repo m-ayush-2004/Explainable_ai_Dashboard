@@ -9,6 +9,8 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
+from imblearn.over_sampling import SMOTE
+from sklearn.utils import resample
 
 # Configurations
 CONFIG_FILE_PATH = 'front end/config/config.json'
@@ -32,36 +34,46 @@ def train_and_save_model(data, target_column, model_name):
     model_path = os.path.join(MODELS_DIR, f"{model_name}.json")
     shap_values_path = os.path.join(SHAP_VALUES_DIR, f"{model_name}_shap_values.npz")
     shap_explainer_path = os.path.join(SHAP_EXPLAINER_DIR, f"{model_name}_explainer.pkl")  # Path for saving the explainer
+    
     # Check if model and SHAP values already exist
     if os.path.exists(model_path) and os.path.exists(shap_values_path):
         print(f"Model and SHAP values for '{model_name}' already exist. Skipping training.")
         return model_path
+    print(data)
+    # Separate features and target from balanced data
+    x_balanced = data.drop(columns=[target_column])
+    y_balanced = data[target_column]
 
-    # Split dataset into features (X) and target (y)
-    x = data.drop(columns=[target_column])
-    y = data[target_column]
-
-    # Encode categorical features
-    for col in x.select_dtypes(include=['object']).columns:
-        x[col] = x[col].astype('category').cat.codes
-
+    # Apply SMOTE to create a balanced dataset with equal number of instances for both classes
+    smote = SMOTE(n_jobs=-1)
+    try:
+        # Fit SMOTE only if there is an imbalance after downsampling
+        x_resampled, y_resampled = smote.fit_resample(x_balanced, y_balanced)
+    except:
+        print("Smote failed")
+        x_resampled= x_balanced
+        y_resampled= y_balanced
     # Train XGBoost model
     model = xgb.XGBClassifier(use_label_encoder=False)
-    model.fit(x, y)
+    model.fit(x_resampled, y_resampled)
 
     # Save model
     model.save_model(model_path)
 
     # Generate and save SHAP values with sampling
-    shap_values, x_sampled = generate_shap_values(model, x)
-    np.savez_compressed(shap_values_path, shap_values=shap_values.values, base_values=shap_values.base_values, features=x_sampled)
+    shap_values, x_sampled = generate_shap_values(model, x_resampled)
+    
+    np.savez_compressed(shap_values_path, shap_values=shap_values.values, base_values=shap_values.base_values, features=x_sampled, feature_names=x_balanced.columns.tolist())
 
     # Save the explainer (you can save it as a pickle)
     with open(shap_explainer_path, 'wb') as f:
         pickle.dump(shap.Explainer(model), f)
+
     # Update config file
-    update_config_file(model_name, target_column, list(x.columns))
+    update_config_file(model_name, target_column, list(data.columns))
+    
     return model_path
+
 
 def generate_shap_values(model, x):
     # Limit dataset to 3,000 samples for SHAP analysis
@@ -79,13 +91,23 @@ def create_visualizations(model_name, data, target_column):
     model_path = os.path.join(MODELS_DIR, f"{model_name}.json")
     shap_values_path = os.path.join(SHAP_VALUES_DIR, f"{model_name}_shap_values.npz")
     
-    
+    # Separate features and target from balanced data
+    x_balanced = data.drop(columns=[target_column])
+    y_balanced = data[target_column]
+
+    # Apply SMOTE to create a balanced dataset with equal number of instances for both classes
+    smote = SMOTE(n_jobs=-1)
+    try:
+        # Fit SMOTE only if there is an imbalance after downsampling
+        x_resampled, y_resampled = smote.fit_resample(x_balanced, y_balanced)
+    except:
+        print("Smote failed")
+        x_resampled= x_balanced
+        y_resampled= y_balanced
     # Encode categorical features
     for col in data.select_dtypes(include=['object']).columns:
         data[col] = data[col].astype('category').cat.codes
     
-    x = data.drop(columns=[target_column])
-    # Load the saved model
     model = xgb.XGBClassifier()
     model.load_model(model_path)
     
@@ -108,8 +130,8 @@ def create_visualizations(model_name, data, target_column):
         plt.close()  # Close the figure to free memory
     
     # Generate confusion matrix
-    y_pred = model.predict(x)
-    conf_matrix = confusion_matrix(data[target_column], y_pred)
+    y_pred = model.predict(x_resampled)
+    conf_matrix = confusion_matrix(y_resampled, y_pred)
     fig_cm = px.imshow(conf_matrix,
                         labels={'x': 'Predicted', 'y': 'Actual'},
                         color_continuous_scale='Blues')
