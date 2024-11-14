@@ -62,6 +62,40 @@
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<div class="container mt-5">
+  <h1 class="heading">Visualizations for {{ model_name | capitalize }}</h1>
+
+
+
+  <!-- Pair Plot Visualization -->
+  <div class="visualization-section">
+      <h3>Pair Plot</h3>
+      <p>A pairplot is a powerful data visualization tool used to explore and understand the pairwise relationships between multiple variables in a dataset. It is particularly useful in the context of exploratory data analysis, allowing analysts to quickly visualize correlations and distributions among variables.</p>
+      <img src="{{ url_for('static', filename='shap_plots/' + pair_plot_path.split('/')[-1]) }}" alt="Pair Plot" style="width: 100%; height: auto;">
+  </div>
+
+  <!-- SHAP Plot Visualization -->
+  <div class="visualization-section">
+      <h3>SHAP Summary Plot</h3>
+      <p>A SHAP summary plot is a visualization tool used to interpret the output of machine learning models by displaying the importance and effect of each feature on the model's predictions. SHAP (SHapley Additive exPlanations) values quantify how much each feature contributes to the final prediction for each instance in the dataset.</p>
+      <img src="{{ url_for('static', filename='shap_plots/' + shap_plot_path.split('/')[-1]) }}" alt="SHAP Summary Plot" style="width: 100%; height: auto;">
+  </div>
+
+  <!-- Correlation Plot Visualization -->
+  <div class="visualization-section">
+      <h3>Correlation Plot</h3>
+      <p>A correlation plot is a graphical representation that illustrates the relationship between two or more variables. It visually conveys how changes in one variable are associated with changes in another, allowing for the identification of patterns, trends, and potential correlations.</p>
+      <img src="{{ url_for('static', filename='shap_plots/' + corr.split('/')[-1]) }}" alt="Correlation Plot" style="width: 100%; height: auto;">
+  </div>
+
+  <!-- Form for Predictions -->
+  <form action="/basic_models" method="get">
+    <button type="submit" class="btn btn-primary">Get Started with Predictions</button>
+  </form>
+</div>
+
+
 </body>
 
 </html>

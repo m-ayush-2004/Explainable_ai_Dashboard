@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for,flash
+from flask import Flask, render_template, request, redirect, url_for,flash,jsonify
 from disease_scraper import scrape_disease_info
 from custom_model_manager import *
 from hospital_loader import *
@@ -76,41 +76,6 @@ def search():
 def models():
     return render_template('index/predict.html')
 
-
-
-
-
-
-
-
-
-
-
-
-
-# Define deep learning models (for demonstration purposes)
-deep_learning_models = ['Model A', 'Model B', 'Model C']  # Replace with actual model names
-
-@app.route('/deep_learning', methods=['GET', 'POST'])
-def deep_learning():
-    if request.method == 'POST':
-        file = request.files.get('image_file')
-        if file:
-            print("File uploaded:", file.filename)  # Debugging line
-            prediction_result = run_deep_learning_model(file)  # Define this function
-            return render_template('dl_results.html', prediction=prediction_result)
-
-    return render_template('deep_learning.html')
-
-
-
-
-
-
-
-
-
-
 # Define available models and their parameters
 
 def preprocess_data(data,target_column):
@@ -179,13 +144,18 @@ def add_custom_model():
 
         if model_name and target_column and file:
             file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-            file.save(file_path)
-            data = pd.read_csv(file_path)
-            balanced_data= preprocess_data(data, target_column)
-            model_path = train_and_save_model(balanced_data, target_column, model_name)
-            flash(f"Model '{model_name}' created and saved at {model_path}", 'success')
-            return redirect(url_for('model_visualizations', model_name=model_name, file_path= file_path))
-            
+            print(UPLOAD_FOLDER+ file.filename)
+            try :
+                file.save(file_path)
+                data = pd.read_csv(file_path)
+                balanced_data= preprocess_data(data, target_column)
+                model_path = train_and_save_model(balanced_data, target_column, model_name)
+                flash(f"Model '{model_name}' created and saved at {model_path}", 'success')
+                return redirect(url_for('model_visualizations', model_name=model_name, file_path= file_path))
+            except Exception as e:
+                error_message = str(e) or "An unexpected error occurred."
+                return render_template('basic_model/add_custom_model.html', 
+                             error_message=error_message)
         else:
             flash("Please provide all required fields.", 'warning')
             return render_template('basic_model/add_custom_model.html')
@@ -200,43 +170,26 @@ def model_visualizations(model_name, file_path):
         return redirect(url_for('basic_models_route'))
 
     # Load the data and generate visualizations
-    # file_path = os.path.join(file_path)
     data = pd.read_csv(file_path)
     target_column = config_data[model_name]['target_column']
     data = preprocess_data(data, target_column)
-    print(len(data))
-    fig_cm = create_visualizations(model_name, data, target_column)
+    
+    # Generate visualizations and insights
+    fig_cm, report_summary = create_visualizations(model_name, data, target_column)
+    
     shap_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_name}_shap_summary.png")
     corr_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_name}_correlation_matrix.png")
     pair_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_name}_pair_plot.png")
+    
     # Convert figures to JSON for Plotly to render in HTML
     fig_cm_json = fig_cm.to_json()
 
-    return render_template('basic_model/model_visualizations.html', fig_cm=fig_cm_json,  shap_plot_path=shap_plot_path, corr = corr_plot_path, pair_plot_path=pair_plot_path)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return render_template('basic_model/model_visualizations.html', 
+                           fig_cm=fig_cm_json,
+                           shap_plot_path=shap_plot_path,
+                           corr=corr_plot_path,
+                           pair_plot_path=pair_plot_path,
+                           report_summary=report_summary)  # Pass report summary to template
 
 # Dictionary to store loaded models
 models = {}
@@ -260,15 +213,102 @@ def predict():
 
         prediction_result, force_plot_path = run_model(model_choice, inputs)
         load_model('Back end/chk_pts', model_choice)  # Ensure the model is loaded
-
+        shap_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_choice}_shap_summary.png")
+        corr_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_choice}_correlation_matrix.png")
+        pair_plot_path = os.path.join(SHAP_PLOT_DIR, f"{model_choice}_pair_plot.png")
+    
         return render_template('basic_model/predict_results.html', 
                     result=prediction_result, 
                     model_name=model_choice, 
-                    force_plot=force_plot_path)
+                    force_plot=force_plot_path,
+                           shap_plot_path=shap_plot_path,
+                           corr=corr_plot_path,
+                           pair_plot_path=pair_plot_path)
     else:
         return "Model not found", 400
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Define deep learning models (for demonstration purposes)
+# Load available models from config file
+def load_model_config2(config_path='front end\config\config2.json'):
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        return config['models']
+    return {}
+
+# Save model configuration to the config file
+def save_model_config2(models, config_path='front end\config\config2.json'):
+    with open(config_path, 'w') as f:
+        json.dump({"models": models}, f, indent=4)
+
+@app.route('/upload_weights', methods=['POST'])
+def upload_weights():
+    if 'model_name' not in request.form or 'weights_file' not in request.files:
+        return jsonify({"error": "Model name and weights file are required."}), 400
+    
+    model_name = request.form['model_name']
+    weights_file = request.files['weights_file']
+
+    if weights_file.filename == '':
+        return jsonify({"error": "No selected file."}), 400
+
+    # Save the uploaded weights file
+    weights_path = os.path.join('weights', weights_file.filename)  # Ensure you have a 'weights' directory
+    weights_file.save(weights_path)
+
+    # Load existing models
+    models = load_model_config2()
+    
+    # Update the model's weight path
+    models[model_name] = weights_path
+    
+    # Save updated models back to config file
+    save_model_config2(models)
+
+    return jsonify({"message": f"Weights for {model_name} uploaded successfully."}), 200
+
+@app.route('/deep_learning', methods=['GET', 'POST'])
+def deep_learning():
+    if request.method == 'POST':
+        file = request.files.get('image_file')
+        model_name = request.form.get('model_name')  # Get selected model name from form
+        
+        if file and model_name:
+            print("File uploaded:", file.filename)  # Debugging line
+            
+            # Run deep learning prediction with the selected model
+            prediction_result = run_deep_learning_model(file, model_name)
+            return render_template('dl_results.html', prediction=prediction_result)
+
+    # Load available models for selection in the HTML form
+    models = load_model_config2()
+    
+    return render_template('dl_model/deep_learning.html', models=models)
 
 
 

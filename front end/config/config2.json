@@ -1,0 +1,6 @@
+{
+    "models": {
+        "Brain Tumor": "path/to/inception_weights.h5",
+        "ResNet50V2": "path/to/resnet_weights.h5"
+    }
+}

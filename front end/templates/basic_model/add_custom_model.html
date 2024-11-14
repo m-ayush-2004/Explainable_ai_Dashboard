@@ -59,6 +59,24 @@
             <button type="submit" class="btn btn-primary">Upload and Train Model</button>
         </form>
     </div>
+    
+        <!-- Error Message Div -->
+        {% if error_message %}
+        <div class="error-div alert alert-danger" style="display:block; margin-top: 20px; padding: 15px; border-radius: 5px;">
+            <h4 class="alert-heading">Oops! Something went wrong.</h4>
+            <p><strong>Error:</strong> {{ error_message }}</p>
+            <hr>
+            <p><strong>Suggestions to resolve the issue:</strong></p>
+            <ul>
+                <li>🔍 Ensure that your data is accurate and formatted correctly.</li>
+                <li>📋 Double-check the names of your columns for any discrepancies.</li>
+                <li>📂 Only CSV files are supported for data uploads.</li>
+                <li>🔢 Ensure that all data is numeric; non-numeric data may be converted or cause errors.</li>
+                <li>🚫 Make sure there are no missing values in your dataset; fill or remove them before uploading.</li>
+            </ul>
+            <p>If you need further assistance, please consult the documentation or contact support.</p>
+        </div>
+        {% endif %}
 </body>
 
 </html>
