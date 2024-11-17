@@ -11,8 +11,10 @@ import json
 import matplotlib
 import os
 import requests
+from test11 import *
 app = Flask(__name__)
-
+import plotly.io as pio
+pio.renderers.default = 'browser'
 
 # Configurations
 CONFIG_FILE_PATH = 'front end/config/config.json'
@@ -25,21 +27,6 @@ UPLOAD_FOLDER = 'Back end\ml_data'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 matplotlib.use('Agg')  # Set backend for non-interactive plotting
-
-
-
-
-
-
-def run_deep_learning_model(file):
-    # Implement your deep learning model logic here
-    return "Deep Learning Prediction Result"
-
-
-
-
-
-
 
 @app.route('/')
 def index():
@@ -249,10 +236,9 @@ def predict():
 
 
 
+import plotly.graph_objects as go
 
 
-
-# Define deep learning models (for demonstration purposes)
 # Load available models from config file
 def load_model_config2(config_path='front end\config\config2.json'):
     if os.path.exists(config_path):
@@ -266,31 +252,44 @@ def save_model_config2(models, config_path='front end\config\config2.json'):
     with open(config_path, 'w') as f:
         json.dump({"models": models}, f, indent=4)
 
-@app.route('/upload_weights', methods=['POST'])
-def upload_weights():
-    if 'model_name' not in request.form or 'weights_file' not in request.files:
-        return jsonify({"error": "Model name and weights file are required."}), 400
+@app.route('/add_custom_dl_model', methods=['GET', 'POST'])
+def add_custom_dl_model():
+    error_message = None
+    success_message = None
     
-    model_name = request.form['model_name']
-    weights_file = request.files['weights_file']
+    if request.method == 'POST':
+        if 'model_name' not in request.form or 'weights_folder' not in request.files:
+            error_message = "Model name and weights folder are required."
+        else:
+            model_name = request.form['model_name']
+            weights_files = request.files.getlist('weights_folder')
 
-    if weights_file.filename == '':
-        return jsonify({"error": "No selected file."}), 400
+            if not weights_files or all(f.filename == '' for f in weights_files):
+                error_message = "No selected files."
+            else:
+                # Create a directory to save weights if it doesn't exist
+                weights_dir = os.path.join('Back end/weights', model_name)
+                os.makedirs(weights_dir, exist_ok=True)
 
-    # Save the uploaded weights file
-    weights_path = os.path.join('weights', weights_file.filename)  # Ensure you have a 'weights' directory
-    weights_file.save(weights_path)
+                # Save the uploaded weights file(s)
+                for file in weights_files:
+                    file_path = os.path.join(weights_dir, file.filename)
+                    file.save(file_path)
 
-    # Load existing models
-    models = load_model_config2()
-    
-    # Update the model's weight path
-    models[model_name] = weights_path
-    
-    # Save updated models back to config file
-    save_model_config2(models)
+                # Load existing models
+                models = load_model_config2()
+                
+                # Update the model's weight path
+                models[model_name] = weights_dir  # Save the directory path
 
-    return jsonify({"message": f"Weights for {model_name} uploaded successfully."}), 200
+                # Save updated models back to config file
+                save_model_config2(models)
+
+                success_message = f"Weights for {model_name} uploaded successfully."
+
+    # Render the form for GET requests or show messages for POST requests
+    return render_template('dl_model/add_custom_model.html', error_message=error_message, success_message=success_message)
+
 
 @app.route('/deep_learning', methods=['GET', 'POST'])
 def deep_learning():
@@ -302,17 +301,56 @@ def deep_learning():
             print("File uploaded:", file.filename)  # Debugging line
             
             # Run deep learning prediction with the selected model
-            prediction_result = run_deep_learning_model(file, model_name)
-            return render_template('dl_results.html', prediction=prediction_result)
+            # prediction_result = run_deep_learning_model(file, model_name)
+            # return render_template('dl_results.html', prediction=prediction_result)
 
     # Load available models for selection in the HTML form
     models = load_model_config2()
     
     return render_template('dl_model/deep_learning.html', models=models)
 
+@app.route('/predict_dl', methods=['POST'])
+def predict_dl():
+    if request.method == 'POST':
+        file = request.files.get('image_file')
+        model_name = request.form.get('model_name')  # Get selected model name from form
+        
+        if file and model_name:
+            print("File uploaded:", file.filename)  # Debugging line
+            
+            # Preprocess the uploaded image
+            image_array = preprocess_image(file)
+            
+            # Load the selected model
+            model = load_model_from_weights(model_name)
+            print(image_array.shape)
+            # Make prediction using the loaded model
+            prediction_result = model.predict(image_array)
+            print(prediction_result)
+            # Generate LIME explanation for the prediction
+            segment_info,path = generate_lime_heatmap_and_explanation(model, image_array[0],num_segments_to_select=10)
+            # Create a Plotly figure with segments and hover information
+            fig = go.Figure()
 
+            for segment in segment_info:
+                for contour in segment['contours']:
+                    fig.add_trace(go.Scatter(
+                        x=contour[:, 1],  # X-coordinates
+                        y=contour[:, 0],  # Y-coordinates (inverted)
+                        mode='lines',
+                        line=dict(color=segment['color'], width=2),
+                        hoverinfo='text',
+                        text=f'Segment ID: {segment["id"]}<br>Weight: {segment["weight"]:.4f}',
+                        showlegend=False
+                    ))
 
+            fig.update_layout(title='LIME Segmentation Visualization', xaxis_title='X', yaxis_title='Y')
+            
+            graph_json = fig.to_json()
+            # Render results in a new template (you'll need to create this template)
+            return render_template('dl_model/result.html', heatmap_path ='/shap_plots/dl_res.png',graph_json=graph_json)
 
+    return render_template('deep_learning.html')  # Redirect back to deep learning page if something goes wrong
 
 
 
