@@ -9,6 +9,7 @@ import xgboost as xgb
 import pickle
 import json
 import matplotlib
+import keras
 import os
 import requests
 from test11 import *
@@ -309,6 +310,163 @@ def deep_learning():
     
     return render_template('dl_model/deep_learning.html', models=models)
 
+import plotly.graph_objects as go
+import plotly.express as px
+import numpy as np
+
+def create_medical_lime_plot(segment_info, image_shape, medical_image, top_k=15, min_weight_threshold=0.01):
+    """
+    Enhanced version for medical imaging visualization with proper RGB handling
+    """
+    # Extract height and width from image shape
+    height, width = image_shape[:2]
+    
+    # Filter and sort segments
+    important_segments = sorted(
+        [seg for seg in segment_info if seg['weight'] >= min_weight_threshold],
+        key=lambda x: x['weight'], reverse=True
+    )[:top_k]
+
+    # Create figure with dark background for better contrast
+    fig = go.Figure()
+    
+    # Medical imaging color palette (high-contrast colors)
+    colors = px.colors.qualitative.Vivid + px.colors.qualitative.Dark24
+    
+    # Add each segment with enhanced visibility
+    for idx, seg in enumerate(important_segments):
+        contour_color = colors[idx % len(colors)]
+        
+        # Filter and validate contours
+        valid_contours = [
+            cnt for cnt in seg['contours']
+            if len(cnt) > 10 and cv2.contourArea(cnt) > 50
+        ]
+        
+        for cnt in valid_contours:
+            # Convert contour points to plotly coordinates
+            y_values = height - cnt[:, 0]  # Proper Y-axis flip for medical view
+            
+            fig.add_trace(go.Scatter(
+                x=cnt[:, 1],
+                y=y_values,
+                mode='lines',
+                line=dict(color=contour_color, width=4),  # Thicker lines
+                fill='toself',
+                fillcolor=contour_color.replace('rgb', 'rgba').replace(')', ',0.5)'),  # More opaque fill
+                name=f'Region {idx+1}',
+                hovertemplate=(
+                    f'<b>Region {idx+1}</b><br>'
+                    f'Clinical Significance: {seg["weight"]:.4f}<br>'
+                    f'Size: {cv2.contourArea(cnt):.0f} px<extra></extra>'
+                )
+            ))
+    
+    # Add original RGB image as background
+    fig.add_layout_image(
+        dict(
+            source="data:image/png;base64," + image_to_base64(medical_image),
+            xref="x",
+            yref="y",
+            x=0,
+            y=0,
+            sizex=width,
+            sizey=height,
+            sizing="stretch",  # Maintain aspect ratio
+            opacity=0.85,  # More visible background
+            layer="below"
+        )
+    )
+    
+    # Medical-grade layout configuration
+    fig.update_layout(
+        title={
+            'text': 'AI Explanation of Clinical Findings',
+            'x': 0.5,
+            'font': {'size': 24, 'color': 'white', 'family': 'Arial Black'}
+        },
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            range=[0, width],
+            scaleanchor='y',
+            scaleratio=1  # Ensure 1:1 pixel aspect ratio
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,
+            range=[0, height],
+            scaleanchor='x',
+            scaleratio=1
+        ),
+        plot_bgcolor='rgba(0,0,0,0.9)',
+        paper_bgcolor='rgba(0,0,0,0.9)',
+        legend=dict(
+            title='Pathological Regions',
+            font=dict(color='white', size=14),
+            orientation='h',
+            yanchor='bottom',
+            y=1.02,
+            xanchor='center',
+            x=0.5
+        ),
+        margin=dict(l=20, r=20, t=100, b=20),
+        width=800,
+        height=800*(height/width)  # Maintain original aspect ratio
+    )
+    
+    return fig
+
+# Helper functions
+def hex_to_rgba(hex, alpha):
+    """Convert hex color to rgba string"""
+    h = hex.lstrip('#')
+    return f'rgba({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}, {alpha})'
+
+from PIL import Image
+from io import BytesIO
+import base64
+import cv2
+
+def image_to_base64(img_array):
+    """Convert medical image array to base64 string"""
+    # Remove singleton dimensions and ensure proper data type
+    if img_array.dtype == np.float32 or img_array.dtype == np.float64:
+        img_array = (np.clip(img_array, 0, 1) * 255).astype(np.uint8)
+    
+    # Handle different array shapes:
+    if img_array.ndim == 4:  # Batch dimension (N, H, W, C)
+        img_array = img_array[0]  # Take first image in batch
+    elif img_array.ndim == 3 and img_array.shape[0] == 1:  # (1, H, W)
+        img_array = img_array[0]
+    
+    # Add channel dimension if missing (for grayscale)
+    if img_array.ndim == 2:
+        img_array = np.stack((img_array,) * 3, axis=-1)
+    
+    # Convert to PIL Image
+    pil_img = Image.fromarray(img_array)
+    
+    # Save to base64
+    buffered = BytesIO()
+    pil_img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+# Usage
+def generate_clinical_visualization(segment_info, medical_image):
+    """Main entry point for medical visualization"""
+    fig = create_medical_lime_plot(
+        segment_info=segment_info,
+        image_shape=medical_image.shape,
+        medical_image=medical_image,
+        top_k=10,
+        min_weight_threshold=0.05
+    )
+    return fig.to_json()
+
+
 @app.route('/predict_dl', methods=['POST'])
 def predict_dl():
     if request.method == 'POST':
@@ -325,28 +483,32 @@ def predict_dl():
             model = load_model_from_weights(model_name)
             print(image_array.shape)
             # Make prediction using the loaded model
+            input_layer = keras.Input(shape=image_array.shape[1:])
+            output = model(input_layer)
+            model = keras.Model(inputs=input_layer, outputs=output)
+
             prediction_result = model.predict(image_array)
             print(prediction_result)
             # Generate LIME explanation for the prediction
             segment_info,path = generate_lime_heatmap_and_explanation(model, image_array[0],num_segments_to_select=10)
             # Create a Plotly figure with segments and hover information
-            fig = go.Figure()
+            # fig = go.Figure()
 
-            for segment in segment_info:
-                for contour in segment['contours']:
-                    fig.add_trace(go.Scatter(
-                        x=contour[:, 1],  # X-coordinates
-                        y=contour[:, 0],  # Y-coordinates (inverted)
-                        mode='lines',
-                        line=dict(color=segment['color'], width=2),
-                        hoverinfo='text',
-                        text=f'Segment ID: {segment["id"]}<br>Weight: {segment["weight"]:.4f}',
-                        showlegend=False
-                    ))
+            # for segment in segment_info:
+            #     for contour in segment['contours']:
+            #         fig.add_trace(go.Scatter(
+            #             x=contour[:, 1],  # X-coordinates
+            #             y=contour[:, 0],  # Y-coordinates (inverted)
+            #             mode='lines',
+            #             line=dict(color=segment['color'], width=2),
+            #             hoverinfo='text',
+            #             text=f'Segment ID: {segment["id"]}<br>Weight: {segment["weight"]:.4f}',
+            #             showlegend=False
+            #         ))
 
-            fig.update_layout(title='LIME Segmentation Visualization', xaxis_title='X', yaxis_title='Y')
-            
-            graph_json = fig.to_json()
+            # fig.update_layout(title='LIME Segmentation Visualization', xaxis_title='X', yaxis_title='Y')
+            fig = generate_clinical_visualization(segment_info, image_array)
+            graph_json = fig
             # Render results in a new template (you'll need to create this template)
             return render_template('dl_model/result.html', heatmap_path ='/shap_plots/dl_res.png',graph_json=graph_json)
 
@@ -355,4 +517,4 @@ def predict_dl():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

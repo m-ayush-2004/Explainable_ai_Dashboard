@@ -4,12 +4,12 @@ import cv2, json
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.applications import InceptionV3, ResNet50V2, NASNetLarge
-from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout
-from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import ModelCheckpoint
-from tensorflow.keras.utils import Sequence
-from tensorflow.keras.models import load_model
+from keras.applications import InceptionV3, ResNet50V2, NASNetLarge
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout
+from keras.models import Model
+from keras.callbacks import ModelCheckpoint
+from keras.utils import Sequence
+from keras.models import load_model
 from lime import lime_image
 from skimage.measure import find_contours
 import seaborn as sns
@@ -30,13 +30,14 @@ def generate_vibrant_colors(num_colors):
     colors = plt.cm.get_cmap("hsv", num_colors)  # Use HSV colormap for vibrant colors
     return [colors(i)[:3] for i in range(num_colors)]  # Return RGB values
 
+from keras.layers import TFSMLayer
 
 # Load model from weights directory
 def load_model_from_weights(model_name):
     models = load_model_config2()
     if model_name in models:
         weights_dir = models[model_name]
-        model = load_model(weights_dir)  # Load the model from saved weights
+        model = TFSMLayer(weights_dir, call_endpoint='serving_default')  # Load the model from saved weights
         return model
     else:
         raise ValueError("Model not found in configuration.")
@@ -69,7 +70,13 @@ def generate_lime_heatmap_and_explanation(model, image, target_label=1, num_segm
 
     def model_predict_proba(image_array):
         image_array_resized = tf.image.resize(image_array, (224, 224))  # Resize to match model input
-        return model.predict(image_array_resized)
+        predictions = model.predict(image_array_resized)
+        # print("predictions :",predictions)
+        predictions = predictions['dense_7']
+        # print("predictions after extractions:",predictions)
+        if np.array(predictions).ndim == 1:
+            return np.stack([1 - predictions, predictions], axis=1)
+        return predictions
 
     explanation = explainer.explain_instance(
         image,
@@ -176,5 +183,5 @@ def generate_lime_heatmap_and_explanation(model, image, target_label=1, num_segm
         
     else:
         print(f"Label {target_label} not found in top labels.")
-
+    # print(segment_info)
     return segment_info, save_path
